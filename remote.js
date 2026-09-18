@@ -490,7 +490,8 @@
   
     function onKeyDown(e) {
       var key = e.key;
-  
+      var dir = DIR_MAP[key]; // FIX: sebelumnya tidak pernah di-set, menyebabkan ReferenceError
+
       if (/^\d$/.test(key)) {
         var tag = document.activeElement ? document.activeElement.tagName : '';
         var type = document.activeElement ? (document.activeElement.type || '') : '';
@@ -534,6 +535,20 @@
         return;
       }
   
+      // FIX: kalau sedang fokus di kolom teks/textarea/contenteditable dan tombolnya
+      // bukan tombol arah (dir undefined), biarkan browser menangani secara native
+      // (mengetik huruf, backspace, dll) — jangan lanjut ke preventDefault di bawah.
+      var guardEl = document.activeElement;
+      var guardTag = guardEl ? guardEl.tagName : '';
+      var guardType = guardEl ? (guardEl.type || '') : '';
+      var isEditableField =
+        guardTag === 'TEXTAREA' ||
+        (guardTag === 'INPUT' && ['checkbox', 'radio', 'file', 'range'].indexOf(guardType) === -1) ||
+        (guardEl && guardEl.isContentEditable);
+      if (!dir && isEditableField) {
+        return;
+      }
+
       // SESUDAH
       var activeElChk = document.activeElement;
       if (pickerOpenSelect && activeElChk === pickerOpenSelect && (dir === 'up' || dir === 'down')) {
