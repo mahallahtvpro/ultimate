@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Masjid Jam Adzan TV</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<script>
+  // ── Panel log kecil di layar TV (BUKAN alert()) ──
+  // Ditaruh paling atas supaya bisa menangkap error dari script manapun,
+  // termasuk yang gagal load/parse lebih awal dari activation-check.js dst.
+  // Beberapa APK "web to APK" tidak mengimplementasikan WebChromeClient,
+  // jadi alert()/confirm() dipanggil tapi tidak tampil apa-apa sama sekali.
+  // Panel ini pakai DOM biasa (guaranteed jalan di semua WebView).
+  // Panel log visual sudah tidak ditampilkan lagi (bug pairing & kamera
+  // sudah selesai diperbaiki). Fungsi ini tetap ada supaya kode lain yang
+  // memanggilnya tidak error, tapi sekarang cuma mencatat ke console —
+  // bisa dilihat lagi lewat chrome://inspect kalau suatu saat perlu debug.
+  function frbDebugLog(msg) {
+    if (window.console && console.log) console.log('[FRB-DEBUG]', msg);
+  }
+
+  window.onerror = function (message, source, lineno, colno, error) {
+    var file = source ? source.split('/').pop() : '?';
+    frbDebugLog('window.onerror: ' + message + ' @ ' + file + ':' + lineno);
+    return false;
+  };
+</script>
+<script src="activation-check.js"></script>
+<div id="app">
+
+  <!-- BACKGROUND SLIDESHOW -->
+  <div id="bg-container">
+    <div class="bg-slide active" id="bg-default" style="background-image:url('./asset/image/masjid1.jpg')"></div>
+  </div>
+
+  <!-- VIDEO SEBELUM ADZAN: background full-screen saat countdown before-adzan -->
+  <div id="video-before-bg"></div>
+
+  <!-- KAS MASJID & AYAT/HADITS: menggantikan bg-slide saja -->
+  <div id="kas-ayat-container" style="display:none">
+    <div class="ka-bg" id="ka-bg" style="background-image:url('./asset/image/kas-ayat.jpg')"></div>
+    <div class="ka-slide active" id="ka-slide-kas">
+      <div class="km-wrap">
+        <div class="km-title" id="km-title">Kas Masjid</div>
+        <div class="km-cols">
+          <div class="km-col">
+            <div class="km-col-head masuk">Pemasukan</div>
+            <div class="km-list"><div class="km-track" id="km-track-masuk"></div></div>
+          </div>
+          <div class="km-col">
+            <div class="km-col-head keluar">Pengeluaran</div>
+            <div class="km-list"><div class="km-track" id="km-track-keluar"></div></div>
+          </div>
+        </div>
+        <div class="km-total" id="km-total">Sisa Kas: Rp 0</div>
+      </div>
+    </div>
+    <div class="ka-slide" id="ka-slide-ayat">
+      <div class="ka-ayat-inner">
+        <div class="ka-ayat-badge" id="ka-ayat-badge">Ayat Al-Qur'an</div>
+        <div class="ka-ayat-text" id="ka-ayat-text">-</div>
+        <div class="ka-ayat-source" id="ka-ayat-source">-</div>
+      </div>
+    </div>
+    <!-- ➕ TAMBAHAN: slide Donasi, ikut rotasi Kas Masjid & Ayat/Hadits -->
+    <div class="ka-slide" id="ka-slide-donasi">
+      <div class="ka-donasi-wrap">
+        <div class="ka-donasi-qr-col">
+          <img id="ka-donasi-qr-img" src="" alt="QR Donasi">
+        </div>
+        <div class="ka-donasi-info-col">
+          <div class="ka-donasi-judul" id="ka-donasi-judul">Donasi</div>
+          <div class="ka-donasi-desc" id="ka-donasi-desc"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KAJIAN OVERLAY -->
+  <div id="kajian-overlay" style="display:none">
+    <div id="kajian-content"></div>
+  </div>
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <div id="top-time">
+      <span id="clock-hm">00:00</span><span id="clock-sec">:00</span>
+    </div>
+    <div id="top-center" onclick="openMasjidModal()">
+      <div id="masjid-name">Masjid Jam Azan TV</div>
+      <div id="masjid-location">Kota Bandung</div>
+    </div>
+    <div id="top-right">
+      <div id="gregorian-date">Senin, 1 Januari 2024</div>
+      <div id="hijri-date">1 Muharram 1446 H</div>
+    </div>
+  </div>
+
+  <!-- MIDDLE LEFT: MODE MUADZIN + TOAST -->
+  <div id="middle-left-col">
+    <button id="btn-muadzin" onclick="openMuadzinModal()">
+      Mode Muadzin
+    </button>
+    <!-- DONASI MODAL DISPLAY -->
+    <div id="donasi-modal" style="display:none; flex-direction:column; align-items:center; background:rgba(0,0,0,0.65); border-radius:12px; padding:14px 18px; margin-top:10px; max-width:320px; gap:8px;">
+      <div id="donasi-judul-display" style="color:#fff; font-weight:bold; font-size:1rem; text-align:center;"></div>
+      <img id="donasi-qr-img" src="" alt="QR Donasi" style="display:none; width:260px; height:260px; border-radius:8px; object-fit:contain; background:#fff; padding:6px;">
+      <div id="donasi-desc-display" style="color:#ddd; font-size:0.78rem; text-align:center; display:none;"></div>
+    </div>
+    <div id="toast-notif" style="display:none"></div>
+  </div>
+
+  <!-- MIDDLE RIGHT: Islamic Event Banner + Settings -->
+  <div id="middle-right-col">
+    <div id="islamic-event-banner" onclick="openEventModal()">
+      <span id="islamic-event-text">Memuat...</span>
+    </div>
+    <button id="btn-settings" onclick="openSettings()"><span class="gear">⚙</span></button>
+
+    <!-- POPUP: COUNTDOWN BEFORE ADZAN -->
+    <div id="popup-countdown-before" style="display:none">
+      <div class="popup-inner">
+        <div class="popup-title">Menuju Waktu Adzan</div>
+        <div class="popup-prayer-name" id="popup-before-name"></div>
+        <div class="popup-timer" id="popup-before-timer">00:00</div>
+        <div class="popup-subtitle">menit lagi</div>
+      </div>
+    </div>
+
+    <!-- POPUP: IQAMAH COUNTDOWN -->
+    <div id="popup-iqamah" style="display:none">
+      <div class="popup-inner">
+        <div class="popup-title">Menunggu Iqamah</div>
+        <div class="popup-prayer-name" id="popup-iqamah-name"></div>
+        <div class="popup-timer" id="popup-iqamah-timer">10:00</div>
+      </div>
+    </div>
+
+    <!-- POPUP: LURUSKAN SHAF -->
+    <div id="popup-shaf" style="display:none">
+      <div class="popup-inner">
+        <div class="popup-title">Bersiap Shalat</div>
+        <div class="popup-timer shaf-timer" id="popup-shaf-timer">15</div>
+        <div class="popup-shaf-text">Lurus dan Rapatkan Shaf</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="kajian-pemateri-ribbon" style="display:none">
+    <div class="ribbon-inner">
+      <span class="ribbon-label">Pemateri</span>
+      <span id="kajian-pemateri-name"></span>
+    </div>
+  </div>
+
+  <!-- PRAYER TIME CARDS -->
+  <div id="prayer-cards">
+    <div class="prayer-card" id="card-imsak" onclick="openPrayerModal('Imsak')">
+      <div class="prayer-name">Imsak</div>
+      <div class="prayer-time" id="time-imsak">04:10</div>
+    </div>
+    <div class="prayer-card" id="card-shubuh" onclick="openPrayerModal('Shubuh')">
+      <div class="prayer-name">Shubuh</div>
+      <div class="prayer-time" id="time-shubuh">04:26</div>
+    </div>
+    <div class="prayer-card" id="card-syuruq" onclick="openPrayerModal('Syuruq')">
+      <div class="prayer-name">Syuruq</div>
+      <div class="prayer-time" id="time-syuruq">05:50</div>
+    </div>
+    <div class="prayer-card" id="card-dhuha" onclick="openPrayerModal('Dhuha')" style="display:none">
+      <div class="prayer-name">Dhuha</div>
+      <div class="prayer-time" id="time-dhuha">06:10</div>
+    </div>
+    <div class="prayer-card" id="card-dzuhur" onclick="openPrayerModal('Dzuhur')">
+      <div class="prayer-name" id="dzuhur-label">Dzuhur</div>
+      <div class="prayer-time" id="time-dzuhur">12:00</div>
+    </div>
+    <div class="prayer-card" id="card-ashar" onclick="openPrayerModal('Ashar')">
+      <div class="prayer-name">Ashar</div>
+      <div class="prayer-time" id="time-ashar">15:03</div>
+    </div>
+    <div class="prayer-card" id="card-maghrib" onclick="openPrayerModal('Maghrib')">
+      <div class="prayer-name" id="prayer-name-maghrib">Maghrib</div>
+      <div class="prayer-time" id="time-maghrib">17:58</div>
+    </div>
+    <div class="prayer-card" id="card-isya" onclick="openPrayerModal('Isya')">
+      <div class="prayer-name" id="prayer-name-isya">Isya'</div>
+      <div class="prayer-time" id="time-isya">18:59</div>
+    </div>
+  </div>
+
+  <!-- RUNNING TEXT -->
+  <div id="runningtext-bar">
+    <div id="runningtext-inner">
+      <span id="runningtext-content">Selamat datang di Masjid kami. Semoga Allah SWT selalu melimpahkan rahmat dan berkah-Nya kepada kita semua. Aamiin.</span>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- MODE ADZAN: foreground full-screen (sebelum adzan / waktu adzan / menjelang iqamah / saatnya shalat) -->
+<div id="adzan-mode-foreground" style="display:none">
+  <div class="amf-bg" id="amf-bg" style="background-image:url('./asset/image/adzan.jpg')"></div>
+  <button id="amf-settings-btn" onclick="openSettings()" title="Pengaturan">⚙</button>
+  <div class="amf-content">
+    <div class="amf-countdown" id="amf-countdown" style="display:none">00:00</div>
+    <img class="amf-icon" id="amf-icon" src="./asset/image/icon-adzan.png" style="display:none">
+    <div class="amf-clock" id="amf-clock">00:00</div>
+    <div class="amf-status" id="amf-status">Menjelang Adzan</div>
+    <div class="amf-ayat" id="amf-ayat">-</div>
+    <div class="amf-source" id="amf-source">-</div>
+  </div>
+</div>
+
+<!-- VIDEO SEBELUM ADZAN + MODE ADZAN aktif bersamaan:
+     video (#video-before-bg) dinaikkan jadi lapisan paling atas (foreground penuh),
+     menutupi semua tampilan termasuk Mode Adzan. Hanya 2 elemen ini yang tetap
+     tampil di atas video: tombol pengaturan (kanan-atas, posisi sama seperti
+     Mode Adzan) dan banner countdown ala islamic-event-banner (kanan-bawah). -->
+<button id="vb-settings-btn" onclick="openSettings()" title="Pengaturan">⚙</button>
+<div id="vb-event-banner">
+  <span id="vb-event-banner-text">Menuju Adzan</span>
+</div>
+
+<!-- OVERLAY BLACK -->
+<div id="overlay-black" style="display:none">
+  <div id="overlay-clock-display"></div>
+  <div id="overlay-date-display"></div>
+</div>
+
+<!-- PAPAN INFORMASI -->
+<div id="papan-info" style="display:none">
+  <div id="papan-info-inner">
+    <div id="papan-info-title">Pengumuman</div>
+    <div id="papan-info-desc"></div>
+  </div>
+</div>
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- Modal: Masjid -->
+<div class="modal-overlay" id="modal-masjid" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title">🕌 Pengaturan Masjid</div>
+    <label>Nama Masjid</label>
+    <input type="text" id="input-masjid-name" placeholder="Nama Masjid">
+    <label>Kota / Lokasi</label>
+    <input type="text" id="input-masjid-location" placeholder="Kota">
+    <label>Kota (untuk API waktu shalat)</label>
+    <select id="input-city-api">
+    </select>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-masjid')">Batal</button>
+      <button class="btn-save" onclick="saveMasjid()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Hari Besar Islam -->
+<div class="modal-overlay" id="modal-event" style="display:none">
+  <div class="modal-box wide">
+    <div class="modal-title">📅 Hari Besar Islam</div>
+    <div id="event-list"></div>
+    <hr class="divider">
+    <div class="modal-subtitle">Tambah / Edit Hari Besar</div>
+    <input type="hidden" id="event-edit-idx" value="-1">
+    <label>Nama Acara</label>
+    <input type="text" id="event-name-input" placeholder="Nama hari besar">
+    <label>Bulan Hijriyah (1-12)</label>
+    <input type="number" id="event-month-input" min="1" max="12" value="1">
+    <label>Tanggal Hijriyah (1-30)</label>
+    <input type="number" id="event-day-input" min="1" max="30" value="1">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-event')">Tutup</button>
+      <button class="btn-secondary" onclick="clearEventForm()">Reset Form</button>
+      <button class="btn-save" onclick="saveEventItem()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Mode Muadzin -->
+<div class="modal-overlay" id="modal-muadzin" style="display:none">
+  <div class="modal-box wide">
+    <div class="modal-title">🔊 Mode Muadzin — Kelola Audio Adzan</div>
+    <p style="color:#aaa;font-size:0.8rem;margin-bottom:10px">Klik item audio untuk menjadikannya <b>audio adzan aktif</b> (hijau). Gunakan ▶/⏹ untuk preview.</p>
+    <div class="volume-row" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:.8rem;color:#aaa;white-space:nowrap">🔈 Volume</span>
+      <input type="range" id="vol-adzan" min="0" max="100" value="100"
+        style="flex:1;font-size:.8rem;min-width:30px">100%</span>
+    </div>
+    <div id="muadzin-audio-list"></div>
+    <label style="margin-top:12px;display:block">Upload Audio MP3 (bisa multi-file)</label>
+    <input type="file" id="upload-muadzin-audio" accept="audio/*" multiple onchange="addMuadzinAudio(this)">
+    <div class="modal-actions">
+      <button class="btn-mute" id="btn-mute-all" onclick="toggleMuteAll()">🔇 Mute Semua</button>
+      <button class="btn-cancel" onclick="closeModal('modal-muadzin')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Prayer Settings -->
+<div class="modal-overlay" id="modal-prayer" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-prayer-title">⏱ Pengaturan Waktu</div>
+    <div id="prayer-modal-content"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-prayer')">Tutup</button>
+      <button class="btn-save" onclick="savePrayerSettings()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sub Modal: Input Menit -->
+<div class="modal-overlay" id="modal-minutes" style="display:none">
+  <div class="modal-box small">
+    <div class="modal-title" id="modal-minutes-title">Set Menit</div>
+    <input type="number" id="input-minutes" min="0" max="180" value="5">
+    <p style="color:#aaa;font-size:0.82rem;text-align:center;margin-top:4px">menit</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-minutes')">Batal</button>
+      <button class="btn-save" onclick="saveMinutesInput()">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Pesan Blokir Mode Uji Coba -->
+<div class="modal-overlay" id="modal-trial-blocked" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title">🔒 Fitur Terkunci</div>
+    <p id="trial-blocked-msg" style="color:#475569;line-height:1.6;font-size:.9rem;margin:10px 0 20px;">
+      Tombol tidak diaktifkan karena Anda masih dalam Uji Coba. Silahkan hubungi Admin Mahallah TV : WhatsApp 089609745090 untuk mengaktifkannya.
+    </p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-trial-blocked')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SETTINGS SIDEBAR ==================== -->
+<div id="settings-overlay" onclick="closeSettings()" style="display:none"></div>
+<div id="settings-sidebar" style="display:none">
+  <div id="settings-header">
+    <span>⚙ Pengaturan</span>
+    <button onclick="closeSettings()">✕</button>
+  </div>
+  <div id="settings-body">
+
+    <!-- Tombol khusus mode Uji Coba: reaktivasi nama Maghrib & Isya selama 60 menit -->
+    <button id="btn-trial-reactivate-prayer" style="display:none;width:100%;margin-bottom:14px;background:#F5A623;color:#1a1206;border:none;font-weight:700;font-size:.85rem;padding:12px;border-radius:10px;cursor:pointer;" onclick="trialActivatePrayerNames()">🔓 Aktifkan Label Maghrib &amp; Isya (10 Menit)</button>
+
+    <!-- Kartu Adzan -->
+    <div class="settings-section">
+      <div class="settings-section-title" onclick="toggleSection('sec-cards')">🕐 Kartu Adzan</div>
+      <div class="settings-section-body" id="sec-cards">
+        <label class="toggle-label">
+          <input type="checkbox" id="toggle-imsak" onchange="toggleImsak(this)" checked> Tampilkan Imsak
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="toggle-syuruq" onchange="toggleSyuruq(this)" checked> Tampilkan Syuruq
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="toggle-dhuha" onchange="toggleDhuha(this)"> Tampilkan Dhuha
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="toggle-mode-jumat" onchange="toggleModeJumat(this)" checked> Mode Jum'at
+        </label>
+      </div>
+    </div>
+
+    <!-- Running Text -->
+    <div class="settings-section">
+      <div class="settings-section-title" onclick="toggleSection('sec-rt')">📝 Running Text</div>
+      <div class="settings-section-body" id="sec-rt">
+        <textarea id="settings-rt-text" rows="3" placeholder="Isi running text..."></textarea>
+        <label>Kecepatan (semakin kecil = semakin cepat, detik)</label>
+        <input type="range" id="settings-rt-speed" min="20" max="200" value="60" oninput="document.getElementById('rt-speed-val').textContent=this.value">
+        <span id="rt-speed-val" style="color:#aaa;font-size:0.8rem">60</span>s
+        <button class="btn-save" style="margin-top:8px" onclick="saveRunningText()">Simpan</button>
+      </div>
+    </div>
+
+    <!-- Background -->
+    <div class="settings-section">
+      <div class="settings-section-title" onclick="toggleSection('sec-bg')">🖼 Background</div>
+      <div class="settings-section-body" id="sec-bg">
+        <label>Upload Gambar (multi-file)</label>
+        <input type="file" id="upload-bg" accept="image/*" multiple onchange="addBackgrounds(this)">
+        <div id="bg-preview-list"></div>
+        <label>Durasi per Slide (detik)</label>
+        <input type="number" id="settings-bg-speed" min="2" max="120" value="8">
+        <label>Model Transisi</label>
+        <select id="settings-bg-transition">
+          <option value="fade">Fade</option>
+          <option value="slide-left">Slide Kiri</option>
+          <option value="slide-right">Slide Kanan</option>
+          <option value="zoom-in">Zoom In</option>
+          <option value="zoom-out">Zoom Out</option>
+          <option value="flip">Flip</option>
+        </select>
+        <button class="btn-save" style="margin-top:8px" onclick="saveBgSettings()">Simpan</button>
+      </div>
+    </div>
+
+    <!-- Audio -->
+    <div class="settings-section">
+      <div class="settings-section-title" onclick="toggleSection('sec-audio')">🔊 Audio</div>
+      <div class="settings-section-body" id="sec-audio">
+        <label>🎵 Audio Sebelum Adzan (pre-adzan)</label>
+        <div class="volume-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:.8rem;color:#aaa;white-space:nowrap">🔈 Volume</span>
+          <input type="range" id="vol-pre-adzan" min="0" max="100" value="100"
+            style="flex:1;font-size:.8rem;min-width:30px">100%</span>
+        </div>
+        <div class="select-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:.8rem;color:#aaa;white-space:nowrap">🎚️ Sumber</span>
+          <select id="pre-adzan-source" onchange="togglePreAdzanSource(this)" style="flex:1">
+            <option value="default">File (Default/Upload)</option>
+            <option value="link">Link YouTube</option>
+          </select>
+        </div>
+        <div id="pre-adzan-link-row" style="display:none;gap:6px;margin-bottom:6px">
+          <input type="text" id="pre-adzan-youtube-url" placeholder="Tempel link YouTube di sini" style="flex:1">
+          <button class="btn-icon" onclick="savePreAdzanYoutubeLink()" title="Simpan link">💾</button>
+        </div>
+        <p id="pre-adzan-link-note" style="display:none;color:#666;font-size:.7rem;margin:0 0 6px">⚠️ Butuh koneksi internet. Kalau offline, otomatis diganti ke audio default/upload di bawah.</p>
+        <div id="audio-pre-adzan-list"></div>
+        <input type="file" id="upload-pre-adzan" accept="audio/*" multiple onchange="addSettingsAudio('pre-adzan',this)">
+
+        <label style="margin-top:10px">📢 Audio Adzan (saat waktu adzan tiba)</label>
+        <p style="color:#666;font-size:0.75rem">Audio dari Mode Muadzin juga muncul di sini sebagai pilihan aktif.</p>
+        <div class="volume-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:.8rem;color:#aaa;white-space:nowrap">🔈 Volume</span>
+          <input type="range" id="vol-adzan-settings" min="0" max="100" value="100"
+            style="flex:1;font-size:.8rem;min-width:30px">100%</span>
+        </div>
+        <div id="audio-adzan-list"></div>
+        <input type="file" id="upload-adzan-settings" accept="audio/*" multiple onchange="addSettingsAudio('adzan',this)">
+
+        <label style="margin-top:10px">🔔 Audio Alarm (popup shaf, imsak, syuruq)</label>
+        <div class="volume-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:.8rem;color:#aaa;white-space:nowrap">🔈 Volume</span>
+          <input type="range" id="vol-alarm" min="0" max="100" value="100"
+            style="flex:1;font-size:.8rem;min-width:30px">100%</span>
+        </div>
+        <div id="audio-alarm-list"></div>
+        <input type="file" id="upload-alarm" accept="audio/*" multiple onchange="addSettingsAudio('alarm',this)">
+      </div>
+    </div>
+
+    <!-- Papan Informasi -->
+    <div class="settings-section">
+      <div class="settings-section-title" onclick="toggleSection('sec-papan')">📋 Papan Informasi</div>
+      <div class="settings-section-body" id="sec-papan">
+        <label class="toggle-label">
+          <input type="checkbox" id="toggle-papan" onchange="togglePapanInfo(this)"> Aktifkan Papan Info
+        </label>
+        <input type="text" id="papan-title-input" placeholder="Judul Pengumuman">
+        <textarea id="papan-desc-input" rows="3" placeholder="Deskripsi..."></textarea>
+        <button class="btn-save" onclick="savePapanInfo()">Simpan</button>
+      </div>
+    </div>
+
+    <!-- Kajian -->
+    <div class="settings-section">
+      <div class="settings-section-title" onclick="toggleSection('sec-kajian')">🎓 Mode Kajian</div>
+      <div class="settings-section-body" id="sec-kajian">
+        <label class="toggle-label">
+          <input type="checkbox" id="toggle-kajian" onchange="toggleKajian(this)"> Aktifkan Mode Kajian
+        </label>
+        <label class="toggle-label" style="margin-top:6px">
+          <input type="checkbox" id="toggle-hide-cards" onchange="toggleHideCards(this)"> Sembunyikan Card Adzan saat Kajian
+        </label>
+        <label>Link YouTube Kajian</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="kajian-video-url" placeholder="https://youtube.com/watch?v=..." style="flex:1">
+          <button class="btn-danger" title="Hapus URL" onclick="clearKajianItem('url')">✕</button>
+        </div>
+        <button class="btn-secondary" style="margin-top:4px" onclick="applyKajianUrl()">Terapkan URL</button>
+        <label>Nama Pemateri</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="kajian-pemateri" placeholder="Ustadz ..." style="flex:1">
+          <button class="btn-danger" title="Hapus nama pemateri" onclick="clearKajianPemateri()">✕</button>
+        </div>        <label>Muncul setelah (detik dari start)</label>
+        <input type="number" id="kajian-pemateri-delay" min="0" value="5">
+        <label>Tampil selama (detik)</label>
+        <input type="number" id="kajian-pemateri-duration" min="5" value="30">
+        <label style="margin-top:10px">Tema Warna Ribbon</label>
+          <div id="ribbon-tema-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px"></div>
+
+          <label style="margin-top:10px">Ukuran Font Nama Pemateri</label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="range" id="ribbon-font-size" min="12" max="48" value="17"
+              style="flex:1;font-size:.8rem;min-width:30px">17px</span>
+          </div>
+        <button class="btn-save" style="margin-top:8px" onclick="saveKajian()">Simpan & Terapkan</button>
+      </div>
+    </div>
+
+    <!-- Live Camera -->
+    <div class="settings-section">
+      <div class="settings-section-title" onclick="toggleSection('sec-live')">📷 Live Kamera</div>
+      <div class="settings-section-body" id="sec-live">
+
+        <!-- 4 dropdown kamera -->
+        <label style="font-size:.78rem">Pilih Kamera 1</label>
+        <select id="camera-select-1"></select>
+      
+        <label style="font-size:.78rem;margin-top:6px">Pilih Kamera 2</label>
+        <select id="camera-select-2"></select>
+      
+        <label style="font-size:.78rem;margin-top:6px">Pilih Kamera 3</label>
+        <select id="camera-select-3"></select>
+      
+        <label style="font-size:.78rem;margin-top:6px">Pilih Kamera 4</label>
+        <select id="camera-select-4"></select>
+      
+        <!-- Tombol Mulai Kamera + Mulai Rekam sejajar -->
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn-save" id="btn-mulai-kamera" onclick="lgMulaiKamera()" style="flex:1">▶ Mulai Kamera</button>
+          <button class="btn-save"  id="btn-rekam" onclick="toggleRekam()" style="flex:1;background:#e74c3c">⏺ Mulai Rekam</button>
+        </div>
+      
+        <!-- Status rekam -->
+        <div id="rekam-status" style="font-size:.75rem;color:#aaa;margin-top:6px;display:none">
+          ⏺ <span id="rekam-timer">00:00</span> — sedang merekam
+        </div>
+      
+        <!-- Switcher kamera aktif -->
+        <label style="font-size:.78rem;margin-top:12px;display:block">Perpindahan Kamera</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px">
+          <button id="lg-sw-btn-1" onclick="lgSwitchKamera(1)" class="lg-sw-btn">Kamera 1</button>
+          <button id="lg-sw-btn-3" onclick="lgSwitchKamera(3)" class="lg-sw-btn">Kamera 3</button>
+          <button id="lg-sw-btn-2" onclick="lgSwitchKamera(2)" class="lg-sw-btn">Kamera 2</button>
+          <button id="lg-sw-btn-4" onclick="lgSwitchKamera(4)" class="lg-sw-btn">Kamera 4</button>
+        </div>
+      
+        <!-- Pilihan transisi -->
+        <label style="font-size:.78rem;margin-top:10px;display:block">Transisi</label>
+        <select id="lg-transisi-select" style="width:100%;margin-top:4px">
+          <option value="static">Statis</option>
+          <option value="fade">Fade</option>
+        </select>
+      
+      </div>
+    </div>
+
+    <!-- Donasi -->
+    <div class="settings-section">
+      <div class="settings-section-title" onclick="toggleSection('sec-donasi')">💳 Donasi</div>
+      <div class="settings-section-body" id="sec-donasi">
+        <label class="toggle-label">
+          <input type="checkbox" id="toggle-donasi" onchange="toggleDonasi(this)"> Aktifkan Donasi
+        </label>
+        <label>Judul Donasi</label>
+        <input type="text" id="donasi-judul-input" placeholder="Contoh: Donasi Masjid">
+        <label>Upload QR Code</label>
+        <input type="file" id="donasi-qr-upload" accept="image/*">
+        <img id="donasi-qr-preview" src="" alt="QR tersimpan" style="display:none;max-width:120px;margin-top:6px;border-radius:6px">
+        <label>Deskripsi (opsional)</label>
+        <textarea id="donasi-desc-input" rows="2" placeholder="Contoh: BCA 1234567890 a.n. Masjid..."></textarea>
+        <button class="btn-save" onclick="saveDonasi()">Simpan</button>
+      </div>
+    </div>
+
+    <!-- Template Layout -->
+    <div class="settings-section">
+      <div class="settings-section-title" onclick="toggleSection('sec-template')">📐 Template Layout</div>
+      <div class="settings-section-body" id="sec-template">
+        <label class="toggle-label" style="margin-bottom:6px">Pilih Template</label>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn-save" onclick="setTemplate('default')">🟦 Default</button>
+          <button class="btn-save" onclick="setTemplate('cardkiri')">⬅ Card Kiri</button>
+          <button class="btn-save" onclick="setTemplate('cardatas')">⬆ Card Atas</button>
+        </div>
+        <p id="template-active-label" style="color:#aaa;font-size:.75rem;margin-top:10px;text-align:center">
+          Aktif: Default
+        </p>
+
+        <hr class="divider" style="margin:14px 0">
+        <label class="toggle-label" style="margin-bottom:6px">Posisi Popup Notifikasi</label>
+        <p style="color:#888;font-size:.72rem;margin-bottom:8px">Berlaku untuk popup "Menuju Waktu Adzan", "Menunggu Iqamah", dan "Luruskan Shaf".</p>
+        <div style="display:flex;gap:6px">
+          <button class="popup-pos-btn" id="popup-pos-btn-left" onclick="setPopupPosition('left')">⬅ Kiri</button>
+          <button class="popup-pos-btn" id="popup-pos-btn-center" onclick="setPopupPosition('center')">⬍ Tengah</button>
+          <button class="popup-pos-btn" id="popup-pos-btn-right" onclick="setPopupPosition('right')">➡ Kanan</button>
+        </div>
+
+        <label style="margin-top:14px;display:block">Ukuran Kotak Popup</label>
+        <p style="color:#888;font-size:.72rem;margin-bottom:4px">Kotak membesar/mengecil beserta ukuran hurufnya secara proporsional.</p>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:.8rem;color:#aaa">A</span>
+          <input type="range" id="popup-scale-slider" min="50" max="200" step="5" value="100"
+            style="flex:1" oninput="previewPopupScale(this.value)" onchange="commitPopupScale(this.value)">
+          <span style="font-size:1.2rem;color:#aaa">A</span>
+        </div>
+        <p style="color:#aaa;font-size:.78rem;text-align:center;margin-top:2px"><span id="popup-scale-val">100</span>%</p>
+
+        <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="previewPopupDemo()">👁 Pratinjau Popup</button>
+
+        <hr class="divider" style="margin:14px 0">
+        <label class="toggle-label" style="margin-bottom:6px">Ukuran Font Universal</label>
+        <p style="color:#888;font-size:.72rem;margin-bottom:4px">Membesarkan/mengecilkan SEMUA teks di seluruh tampilan secara bersamaan (jam, kartu waktu, running text, popup, banner, dll), tanpa mengubah ukuran kotak/tata letak.</p>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:.8rem;color:#aaa">A</span>
+          <input type="range" id="global-font-scale-slider" min="50" max="200" step="5" value="100"
+            style="flex:1" oninput="previewGlobalFontScale(this.value)" onchange="commitGlobalFontScale(this.value)">
+          <span style="font-size:1.2rem;color:#aaa">A</span>
+        </div>
+        <p style="color:#aaa;font-size:.78rem;text-align:center;margin-top:2px"><span id="global-font-scale-val">100</span>%</p>
+        <button class="btn-secondary" style="width:100%;margin-top:6px" onclick="commitGlobalFontScale(100)">Kembalikan ke 100%</button>
+      </div>
+    </div>
+
+    <!-- Tema -->
+    <div class="settings-section">
+      <div class="settings-section-title" onclick="toggleSection('sec-tema')">🎨 Tema</div>
+      <div class="settings-section-body" id="sec-tema">
+        <label>Pilih Tema Global</label>
+        <div id="tema-grid"></div>
+        <hr class="divider" style="margin:12px 0">
+        <label>Kustomisasi Per Elemen</label>
+        <div id="custom-theme-list"></div>
+      </div>
+    </div>
+
+    <!-- Pairing HP -->
+    <!-- Lainnya -->
+    <div class="settings-section">
+      <div class="settings-section-title" onclick="toggleSection('sec-lainnya')">🧩 Lainnya</div>
+      <div class="settings-section-body" id="sec-lainnya">
+        <label class="toggle-label">
+          <input type="checkbox" id="toggle-adzan-mode" onchange="toggleAdzanMode(this)"> Aktifkan Mode Adzan
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="toggle-kas-ayat" onchange="toggleKasAyat(this)"> Kas Masjid &amp; Ayat/Hadits
+        </label>
+        <label>Tampilkan Kas Masjid per</label>
+        <select id="kas-view-mode" onchange="setKasViewMode(this.value)">
+          <option value="minggu">Minggu Ini</option>
+          <option value="bulan">Bulan Ini</option>
+        </select>
+
+        <label>Durasi Animasi Kas Masjid → Ayat/Hadits (detik)</label>
+        <input type="range" id="ka-duration-slider" min="3" max="30" value="8"
+          oninput="document.getElementById('ka-duration-val').textContent=this.value"
+          onchange="setKaRotationDuration(this.value)">
+        <span id="ka-duration-val" style="color:#aaa;font-size:0.8rem">8</span>s
+
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,.1);margin:14px 0">
+
+        <label class="toggle-label">
+          <input type="checkbox" id="toggle-video-before" onchange="toggleVideoBefore(this)"> Aktifkan Video Sebelum Adzan
+        </label>
+        <p style="color:#94a3b8;font-size:.78rem;line-height:1.5;margin:4px 0 10px">
+          Video akan tampil full-screen sebagai background saat countdown sebelum adzan berlangsung. Audio pra-adzan biasa otomatis dimatikan (suara diambil dari video).
+        </p>
+        <div id="video-before-options" style="display:none">
+          <label>Sumber Video</label>
+          <select id="video-before-source" onchange="setVideoBeforeSource(this.value)">
+            <option value="upload">Upload Video</option>
+            <option value="youtube">Link YouTube</option>
+          </select>
+
+          <div id="video-before-upload-row" style="margin-top:8px">
+            <input type="file" id="upload-video-before" accept="video/mp4,video/webm,video/*" onchange="handleVideoBeforeUpload(this)">
+            <p id="video-before-current" style="color:#94a3b8;font-size:.78rem;margin:8px 0 0">Belum ada video diupload.</p>
+          </div>
+
+          <div id="video-before-youtube-row" style="display:none;gap:6px;margin-top:8px">
+            <input type="text" id="video-before-youtube-url" placeholder="https://youtube.com/watch?v=..." style="width:100%;box-sizing:border-box">
+            <button class="btn-save" style="width:100%;margin-top:8px" onclick="saveVideoBeforeYoutube()">Terapkan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title" onclick="toggleSection('sec-pairing'); if(window.FirebaseRemoteBridge) FirebaseRemoteBridge.refreshPairingStatus();">📱 Pairing HP</div>
+      <div class="settings-section-body" id="sec-pairing">
+        <p style="color:#94a3b8;font-size:.82rem;line-height:1.5;margin:0 0 10px">
+          Hubungkan HP untuk mengontrol TV ini dari jarak jauh (ubah waktu sholat, upload gambar/audio, dll).
+        </p>
+        <p id="pairing-status-text" style="font-size:.85rem;font-weight:600;margin:0 0 12px">⚪ Belum ada HP terhubung</p>
+        <button class="btn-save" style="width:100%" onclick="safeOpenPairing()">📱 Buka Pairing HP</button>
+      </div>
+    </div>
+
+    <!-- Tentang -->
+    <div class="settings-section">
+      <div class="settings-section-title" onclick="toggleSection('sec-tentang')">ℹ️ Tentang</div>
+      <div class="settings-section-body" id="sec-tentang">
+
+        <div style="text-align:center;padding:6px 0 16px">
+          <img src="asset/logo.png" alt="Logo Mahallah TV"
+               style="width:96px;height:96px;object-fit:contain;border-radius:20px;padding:6px">
+          <div style="color:#fff;font-size:1.15rem;font-weight:700;">Mahallah TV</div>
+        </div>
+
+        <label>Email</label>
+        <p style="color:#94a3b8;font-size:.85rem;margin:0 0 16px">mahallahtv@gmail.com</p>
+
+        <label>e-Panduan</label>
+        <p style="color:#94a3b8;font-size:.78rem;margin:0 0 10px">Pindai QR Code di bawah untuk membuka panduan penggunaan aplikasi.</p>
+        <div style="display:flex;justify-content:center;margin:0 0 18px">
+          <img src="asset/buku-panduan.png" alt="QR Code e-Panduan"
+               style="width:260px;height:260px;max-width:100%;object-fit:contain;border-radius:14px;background:#fff;padding:10px">
+        </div>
+
+        <button class="btn-secondary" style="width:100%">🔒 Privacy Policy</button>
+
+      </div>
+    </div>
+
+    <script>
+      function safeOpenPairing() {
+        frbDebugLog('Tombol diklik.');
+        try {
+          if (window.__frbScriptLoadFailed) {
+            frbDebugLog('GAGAL: Firebase SDK gagal dimuat dari internet (cek koneksi TV).');
+            return;
+          }
+          if (typeof firebase === 'undefined') {
+            frbDebugLog('GAGAL: variabel global "firebase" tidak ada sama sekali. Script firebase-app.js/firebase-firestore.js tidak jalan.');
+            return;
+          }
+          if (!window.FirebaseRemoteBridge || typeof FirebaseRemoteBridge.openPairing !== 'function') {
+            frbDebugLog('GAGAL: FirebaseRemoteBridge belum terbentuk. firebase-remote-bridge.js kemungkinan error saat load.');
+            return;
+          }
+          frbDebugLog('FirebaseRemoteBridge OK. Memanggil openPairing()...');
+          FirebaseRemoteBridge.openPairing();
+
+          setTimeout(function () {
+            var ov = document.getElementById('frb-pairing-overlay');
+            if (!ov) {
+              frbDebugLog('overlay TIDAK ada di DOM setelah openPairing() dipanggil. Kemungkinan gagal di initFirebase()/startPairingFlow() (cek internet / Firestore rules).');
+              return;
+            }
+            var rect = ov.getBoundingClientRect();
+            var cs = window.getComputedStyle(ov);
+            frbDebugLog('overlay ADA di DOM. display=' + cs.display + ' visibility=' + cs.visibility +
+              ' size=' + rect.width + 'x' + rect.height + ' opacity=' + cs.opacity);
+          }, 800);
+        } catch (e) {
+          frbDebugLog('ERROR: ' + (e && e.message ? e.message : e));
+        }
+      }
+    </script>
+
+  </div><!-- settings-body -->
+</div><!-- settings-sidebar -->
+
+<!-- Hidden audio elements -->
+<audio id="audio-pre-adzan-el"></audio>
+<div id="pre-adzan-yt-overlay" style="display:none">
+  <div id="pre-adzan-yt-container"></div>
+</div>
+<script src="https://www.youtube.com/iframe_api" onerror="window.__ytApiLoadFailed = true;"></script>
+<audio id="audio-adzan-el"></audio>
+<audio id="audio-alarm-el"></audio>
+<video id="camera-stream-el" autoplay muted style="display:none"></video>
+
+
+<script src="prayTimes.js"></script>
+<script src="cities.js"></script>
+<script src="fullscreen.js"></script>
+<script src="ayat-hadits.js"></script>
+<script src="app.js"></script>
+<script src="cardkiri.js"></script>
+<script src="cardatas.js"></script>
+<script src="livegrid.js"></script>
+<script src="sleep-mode.js"></script>
+<script src="remote.js"></script>
+<script src="remote-codes.js"></script>
+<script src="wakelock.js"></script>
+
+<!-- Kontrol jarak jauh via HP (Firebase Firestore) -->
+<script>window.__frbScriptLoadFailed = false;</script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js" onerror="window.__frbScriptLoadFailed = true;"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js" onerror="window.__frbScriptLoadFailed = true;"></script>
+<script src="qrcode-lib.js"></script>
+<script src="firebase-remote-bridge.js" onerror="window.__frbScriptLoadFailed = true;"></script>
+</body>
+</html>

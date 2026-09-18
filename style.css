@@ -1,0 +1,817 @@
+/* ============================================================
+MASJID JAM ADZAN TV — style.css
+ES5 / Android 6 Compatible (HG680P)
+============================================================ */
+@font-face { font-family:'Poppins'; src:url('./asset/font/Poppins/Poppins-Regular.ttf'); font-weight:400; }
+@font-face { font-family:'Poppins'; src:url('./asset/font/Poppins/Poppins-Bold.ttf'); font-weight:700; }
+@font-face { font-family:'Roboto Condensed'; src:url('./asset/font/Roboto_Condensed/static/RobotoCondensed-Regular.ttf'); font-weight:400; }
+@font-face { font-family:'Roboto Condensed'; src:url('./asset/font/Roboto_Condensed/static/RobotoCondensed-Bold.ttf'); font-weight:700; }
+
+*{margin:0;padding:0;-webkit-box-sizing:border-box;box-sizing:border-box}
+
+/* CSS Variables fallback: Android 6 Chromium 53 supports CSS variables */
+:root{
+--orange:#F5A623;--orange-dark:#E8941A;
+--red-banner:#C0392B;--gold:#e4c200;
+--text-white:#fff;--text-muted:rgba(255,255,255,.75);
+
+--topbar-bg:rgba(0,0,0,.80);
+--topbar-opacity:1;
+--cards-bg:rgba(0, 0, 0, 0.80);
+--card-active-bg:#F5A623;
+--card-active-text:#fff;
+--banner-bg:#C0392B;
+--banner-text:#fff;
+--rt-bg:rgba(0,0,0,.75);
+--rt-text:#FFD700;
+--papan-bg:rgba(10,10,30,.92);
+--papan-border:#F5A623;
+--popup-bg:rgba(10,10,30,.92);
+--modal-bg:rgba(26,26,46,1);
+}
+
+html,body{
+width:100%;height:100%;overflow:hidden;
+font-family:'Poppins',sans-serif;background:#000;
+font-size:calc(16px * var(--global-font-scale, 1));
+}
+
+/* ---- APP LAYOUT (CSS Grid dengan prefix) ---- */
+#app{
+width:100%;
+width:100vw;
+height:100%;
+height:100vh;
+position:relative;
+display:-webkit-grid;
+display:grid;
+-webkit-grid-template-rows: auto auto 1fr auto auto 40px;
+grid-template-rows: auto auto 1fr auto auto 40px;
+-webkit-grid-template-columns:auto 1fr auto;
+grid-template-columns:auto 1fr auto;
+-ms-grid-rows: auto auto 1fr auto auto 40px;
+-ms-grid-columns: auto 1fr auto;
+grid-template-areas:
+ "topbar topbar topbar"
+ "mid-left . mid-right"
+ ". . ."
+ "ribbon ribbon ribbon"
+ "cards cards cards"
+ "rt rt rt";
+overflow:hidden;
+}
+
+/* ---- BACKGROUND ---- */
+#bg-container{
+position:absolute;
+top:0;right:0;bottom:0;left:0;
+z-index:0;
+overflow:hidden;
+}
+.bg-slide{
+position:absolute;
+top:0;right:0;bottom:0;left:0;
+background-size:cover;
+background-position:center;
+opacity:0;
+z-index:1;
+}
+.bg-slide.active{opacity:1;z-index:3;}
+.bg-slide.leaving{z-index:2;}
+
+/* ---- VIDEO SEBELUM ADZAN (background full-screen saat countdown) ---- */
+#video-before-bg{
+position:fixed;top:0;right:0;bottom:0;left:0;
+z-index:4;display:none;background:#000;overflow:hidden;
+}
+#video-before-bg video,#video-before-bg iframe{
+position:absolute;top:0;right:0;bottom:0;left:0;
+width:100%;height:100%;object-fit:cover;border:none;
+}
+
+/* Transitions */
+#bg-container.t-fade .bg-slide{-webkit-transition:opacity 1.5s ease;transition:opacity 1.5s ease}
+#bg-container.t-fade .bg-slide.active{opacity:1}
+
+#bg-container.t-slide-left .bg-slide{-webkit-transition:-webkit-transform 1.2s ease,opacity .6s ease;transition:transform 1.2s ease,opacity .6s ease;-webkit-transform:translateX(100%);transform:translateX(100%);opacity:0}
+#bg-container.t-slide-left .bg-slide.active{-webkit-transform:translateX(0);transform:translateX(0);opacity:1}
+#bg-container.t-slide-left .bg-slide.leaving{-webkit-transform:translateX(-100%);transform:translateX(-100%);opacity:1}
+
+#bg-container.t-slide-right .bg-slide{-webkit-transition:-webkit-transform 1.2s ease,opacity .6s ease;transition:transform 1.2s ease,opacity .6s ease;-webkit-transform:translateX(-100%);transform:translateX(-100%);opacity:0}
+#bg-container.t-slide-right .bg-slide.active{-webkit-transform:translateX(0);transform:translateX(0);opacity:1}
+#bg-container.t-slide-right .bg-slide.leaving{-webkit-transform:translateX(100%);transform:translateX(100%);opacity:1}
+
+#bg-container.t-zoom-in .bg-slide{-webkit-transition:-webkit-transform 1.5s ease,opacity 1s ease;transition:transform 1.5s ease,opacity 1s ease;-webkit-transform:scale(1.15);transform:scale(1.15);opacity:0}
+#bg-container.t-zoom-in .bg-slide.active{-webkit-transform:scale(1);transform:scale(1);opacity:1}
+
+#bg-container.t-zoom-out .bg-slide{-webkit-transition:-webkit-transform 1.5s ease,opacity 1s ease;transition:transform 1.5s ease,opacity 1s ease;-webkit-transform:scale(.85);transform:scale(.85);opacity:0}
+#bg-container.t-zoom-out .bg-slide.active{-webkit-transform:scale(1);transform:scale(1);opacity:1}
+
+#bg-container.t-flip .bg-slide{-webkit-transition:-webkit-transform 1.2s ease,opacity .4s ease;transition:transform 1.2s ease,opacity .4s ease;-webkit-transform:rotateY(90deg);transform:rotateY(90deg);opacity:0}
+#bg-container.t-flip .bg-slide.active{-webkit-transform:rotateY(0deg);transform:rotateY(0deg);opacity:1}
+
+/* ---- TOPBAR ---- */
+#topbar{
+grid-area:topbar;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+-webkit-box-pack:justify;-webkit-justify-content:space-between;justify-content:space-between;
+padding:12px 24px;
+background:var(--topbar-bg);
+border-bottom:1px solid rgba(255,255,255,.1);
+position:relative;z-index:10;
+}
+#top-time{
+-webkit-box-flex:1;-webkit-flex:1;flex:1;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:baseline;-webkit-align-items:baseline;align-items:baseline;
+}
+#clock-hm{font-size:3.2rem;font-weight:800;color:#fff;font-family:'Roboto Condensed',sans-serif;letter-spacing:2px;text-shadow:0 2px 8px rgba(0,0,0,.8)}
+#clock-sec{font-size:1.8rem;font-weight:700;color:rgba(255,255,255,.7);font-family:'Roboto Condensed',sans-serif;letter-spacing:1px;text-shadow:0 2px 8px rgba(0,0,0,.8)}
+
+#top-center{
+-webkit-box-flex:2;-webkit-flex:2;flex:2;
+text-align:center;cursor:pointer;padding:4px 16px;border-radius:8px;
+-webkit-transition:background .2s;transition:background .2s;
+}
+#top-center:hover{background:rgba(255,255,255,.08)}
+#masjid-name{font-size:1.4rem;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.8)}
+#masjid-location{font-size:.85rem;color:var(--text-muted)}
+
+#top-right{-webkit-box-flex:1;-webkit-flex:1;flex:1;text-align:right}
+#hijri-date{font-size:1rem;font-weight:600;color:var(--gold);text-shadow:0 1px 4px rgba(0,0,0,.8)}
+#gregorian-date{font-size:1.4rem;color:var(--text-muted)}
+
+/* ---- MIDDLE BARS ---- */
+#middle-left-col{
+grid-area:mid-left;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-orient:vertical;-webkit-box-direction:normal;
+-webkit-flex-direction:column;flex-direction:column;
+-webkit-box-align:start;-webkit-align-items:flex-start;align-items:flex-start;
+gap:8px;
+padding:10px 20px;
+position:relative;z-index:10;
+}
+#middle-right-col{
+grid-area:mid-right;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-orient:vertical;-webkit-box-direction:normal;
+-webkit-flex-direction:column;flex-direction:column;
+-webkit-box-align:end;-webkit-align-items:flex-end;align-items:flex-end;
+gap:8px;
+padding:10px 20px;
+position:relative;z-index:10;
+}
+
+#btn-muadzin{
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+gap:8px;
+background:rgba(255,255,255,.15);
+color:#fff;border:1px solid rgba(255,255,255,.3);
+padding:9px 18px;border-radius:30px;
+font-size:.88rem;font-weight:600;cursor:pointer;
+font-family:'Poppins',sans-serif;
+-webkit-transition:background .2s;transition:background .2s;
+white-space:nowrap;
+}
+#btn-muadzin:hover{background:rgba(255,255,255,.25)}
+
+#islamic-event-banner{
+background:var(--banner-bg);color:var(--banner-text);
+font-size:.88rem;font-weight:700;
+padding:9px 18px;border-radius:30px;cursor:pointer;
+letter-spacing:.5px;white-space:nowrap;
+box-shadow:0 4px 15px rgba(192,57,43,.4);
+-webkit-animation:pulse-red 2.5s infinite;
+animation:pulse-red 2.5s infinite;
+}
+@-webkit-keyframes pulse-red{0%,100%{box-shadow:0 4px 15px rgba(192,57,43,.4)}50%{box-shadow:0 4px 25px rgba(192,57,43,.85)}}
+@keyframes pulse-red{0%,100%{box-shadow:0 4px 15px rgba(192,57,43,.4)}50%{box-shadow:0 4px 25px rgba(192,57,43,.85)}}
+
+#btn-settings{
+background:rgba(255,255,255,.15);
+color:#fff;border:1px solid rgba(255,255,255,.3);
+padding:9px 18px;border-radius:30px;
+font-size:.85rem;font-weight:600;cursor:pointer;
+font-family:'Poppins',sans-serif;
+-webkit-transition:background .2s;transition:background .2s;
+white-space:nowrap;
+}
+#btn-settings:hover{background:rgba(255,255,255,.25)}
+
+.gear{font-size:1.5rem;display:inline-block;}
+
+/* ---- TOAST ---- */
+#toast-notif{
+background:rgba(20,20,40,.95);color:#fff;
+padding:10px 18px;border-radius:10px;
+font-size:.82rem;border:1px solid rgba(255,255,255,.15);
+box-shadow:0 4px 20px rgba(0,0,0,.6);
+font-family:'Poppins',sans-serif;
+max-width:260px;
+-webkit-transition:opacity .4s;transition:opacity .4s;
+}
+
+/* ---- PRAYER CARDS ---- */
+#prayer-cards{
+grid-area:cards;
+display:-webkit-box;display:-webkit-flex;display:flex;
+z-index:10;
+position:relative;
+}
+.prayer-card{
+-webkit-box-flex:1;-webkit-flex:1;flex:1;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-orient:vertical;-webkit-box-direction:normal;
+-webkit-flex-direction:column;flex-direction:column;
+background:var(--cards-bg);
+border-top:8px solid rgba(0, 0, 0, 0.5);
+border-right:1px solid rgba(255,255,255,.08);
+padding:14px 8px 12px;
+text-align:center;cursor:pointer;
+-webkit-transition:background .2s;transition:background .2s;
+position:relative;
+border-radius:10px 10px 0 0;
+}
+.prayer-card:last-child{border-right:none}
+.prayer-card:hover{background:rgba(0,0,0,.75)}
+.prayer-card.active-prayer{
+background:var(--card-active-bg) !important;
+border-top:8px solid rgba(255,255,255,.4) !important;
+}
+.prayer-card.active-prayer .prayer-name,
+.prayer-card.active-prayer .prayer-time,
+.prayer-card.active-prayer .card-countdown{color:var(--card-active-text) !important}
+.prayer-name{font-size:1.4rem;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.prayer-time{font-size:2.9rem;font-weight:800;color:#fff;font-family:'Roboto Condensed',sans-serif;line-height:1}
+.card-countdown{font-size:.90rem;color:rgba(255,255,255,.7);margin-top:2px;font-family:'Roboto Condensed',sans-serif}
+
+/* ---- RUNNING TEXT ---- */
+#runningtext-bar{
+grid-area:rt;
+height:40px;z-index:11;
+background:var(--rt-bg);
+border-top:1px solid rgba(255,255,255,.1);
+overflow:hidden;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+}
+#runningtext-inner{display:-webkit-box;display:-webkit-flex;display:flex;white-space:nowrap}
+#runningtext-content{font-size:1.3rem;color:var(--rt-text);font-weight:500;padding-right:120px;white-space:nowrap}
+@-webkit-keyframes marquee{from{-webkit-transform:translateX(100vw);transform:translateX(100vw)}to{-webkit-transform:translateX(-100%);transform:translateX(-100%)}}
+@keyframes marquee{from{transform:translateX(100vw)}to{transform:translateX(-100%)}}
+
+/* ---- POPUPS ---- */
+/* Posisi & ukuran popup (Countdown Sebelum Adzan, Iqamah, Luruskan Shaf)
+dikontrol lewat class popup-pos-left/center/right dan variabel
+--popup-scale (diatur dari menu Pengaturan > Template Layout). */
+#popup-countdown-before,#popup-iqamah,#popup-shaf{
+position:fixed;
+top:50%;
+z-index:500;
+min-width:250px;
+--popup-scale:1;
+}
+#popup-countdown-before.popup-pos-left,
+#popup-iqamah.popup-pos-left,
+#popup-shaf.popup-pos-left{
+left:24px;right:auto;
+-webkit-transform:translateY(-50%) scale(var(--popup-scale));
+transform:translateY(-50%) scale(var(--popup-scale));
+-webkit-transform-origin:left center;transform-origin:left center;
+}
+#popup-countdown-before.popup-pos-center,
+#popup-iqamah.popup-pos-center,
+#popup-shaf.popup-pos-center{
+left:50%;right:auto;
+-webkit-transform:translate(-50%,-50%) scale(var(--popup-scale));
+transform:translate(-50%,-50%) scale(var(--popup-scale));
+-webkit-transform-origin:center center;transform-origin:center center;
+}
+#popup-countdown-before.popup-pos-right,
+#popup-iqamah.popup-pos-right,
+#popup-shaf.popup-pos-right{
+right:24px;left:auto;
+-webkit-transform:translateY(-50%) scale(var(--popup-scale));
+transform:translateY(-50%) scale(var(--popup-scale));
+-webkit-transform-origin:right center;transform-origin:right center;
+}
+.popup-inner{
+background:var(--popup-bg);
+border:1px solid rgba(255,255,255,.2);
+border-radius:16px;padding:20px 24px;text-align:center;
+box-shadow:0 8px 32px rgba(0,0,0,.7);
+-webkit-animation:popupIn .4s ease;
+animation:popupIn .4s ease;
+}
+@-webkit-keyframes popupIn{from{-webkit-transform:scale(.85) translateY(20px);transform:scale(.85) translateY(20px);opacity:0}to{-webkit-transform:scale(1) translateY(0);transform:scale(1) translateY(0);opacity:1}}
+@keyframes popupIn{from{transform:scale(.85) translateY(20px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.popup-title{font-size:.99rem;color:var(--text-muted);font-weight:500;margin-bottom:4px}
+.popup-prayer-name{font-size:1.5rem;font-weight:700;color:var(--orange);margin-bottom:6px}
+.popup-timer{font-size:6rem;font-weight:800;color:#fff;font-family:'Roboto Condensed',sans-serif;line-height:1}
+.shaf-timer{font-size:4rem;color:var(--gold)}
+.popup-subtitle{font-size:.78rem;color:var(--text-muted);margin-top:4px}
+.popup-shaf-text{font-size:1.05rem;font-weight:700;color:var(--gold);margin-top:10px;-webkit-animation:blink 1s infinite;animation:blink 1s infinite}
+@-webkit-keyframes blink{50%{opacity:.4}}
+@keyframes blink{50%{opacity:.4}}
+.popup-reset-btn{
+margin-top:12px;background:rgba(255,255,255,.1);
+border:1px solid rgba(255,255,255,.2);color:#fff;
+padding:5px 14px;border-radius:20px;
+font-size:.75rem;cursor:pointer;font-family:'Poppins',sans-serif;
+}
+.popup-reset-btn:hover{background:rgba(192,57,43,.5)}
+
+/* ---- OVERLAY BLACK ---- */
+#overlay-black{
+position:fixed;
+top:0;right:0;bottom:0;left:0;
+background:#000;z-index:900;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-orient:vertical;-webkit-box-direction:normal;
+-webkit-flex-direction:column;flex-direction:column;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center;
+}
+#overlay-clock-display{font-size:9rem;font-weight:800;color:#fff;font-family:'Roboto Condensed',sans-serif;letter-spacing:4px}
+#overlay-date-display{font-size:1.5rem;color:rgba(255,255,255,.5);margin-top:12px}
+
+/* ---- PAPAN INFORMASI ---- */
+#papan-info{
+position:fixed;top:50%;right:24px;
+-webkit-transform:translateY(-50%);
+transform:translateY(-50%);
+z-index:100;max-width:280px;
+}
+#papan-info-inner{
+background:var(--papan-bg);
+border:1px solid rgba(255,255,255,.2);
+border-left:4px solid var(--papan-border);
+border-radius:12px;padding:18px 20px;color:#fff;
+}
+#papan-info-title{font-size:1rem;font-weight:700;color:var(--orange);margin-bottom:8px}
+#papan-info-desc{font-size:.87rem;color:var(--text-muted);line-height:1.5}
+
+/* ---- KAJIAN OVERLAY ---- */
+#kajian-overlay{
+position:absolute;
+top:0;right:0;bottom:0;left:0;
+z-index:5;background:#000;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-orient:vertical;-webkit-box-direction:normal;
+-webkit-flex-direction:column;flex-direction:column;
+overflow:hidden;
+}
+.ribbon-inner{
+background:-webkit-linear-gradient(315deg,#1a1a2e 0%,var(--red-banner) 100%);
+background:linear-gradient(135deg,#1a1a2e 0%,var(--red-banner) 100%);
+color:#fff;
+padding:8px 24px;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+gap:16px;
+width:100%;
+}
+.ribbon-label{
+font-size:.7rem;
+text-transform:uppercase;
+letter-spacing:2px;
+opacity:.8;
+white-space:nowrap;
+}
+#kajian-pemateri-name{font-size:1.05rem;font-weight:700;}
+#kajian-content{
+-webkit-box-flex:1;-webkit-flex:1;flex:1;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center;
+overflow:hidden;
+}
+#kajian-content{-webkit-transition:opacity 0.3s ease;transition:opacity 0.3s ease;}
+#kajian-content img{width:100%;height:100%;object-fit:contain}
+#kajian-content video{width:100%;height:100%;object-fit:contain}
+#kajian-content iframe{width:100%;height:100%;border:none}
+
+/* ---- PRE-ADZAN YOUTUBE OVERLAY ---- */
+#pre-adzan-yt-overlay{
+position:absolute;
+top:0;right:0;bottom:0;left:0;
+z-index:4;background:#000;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center;
+overflow:hidden;
+}
+#pre-adzan-yt-container{width:100%;height:100%;}
+#pre-adzan-yt-container iframe{width:100%;height:100%;border:none;display:block;}
+
+/* ---- MODALS ---- */
+.modal-overlay{
+position:fixed;
+top:0;right:0;bottom:0;left:0;
+background:rgba(0,0,0,.72);
+z-index:1000;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center;
+}
+.modal-box{
+background:var(--modal-bg);border:1px solid rgba(255,255,255,.15);
+border-radius:16px;padding:28px;width:460px;
+max-width:95vw;max-height:88vh;overflow-y:auto;
+box-shadow:0 20px 60px rgba(0,0,0,.85);color:#fff;
+}
+.modal-box.wide{width:560px}
+.modal-box.small{width:280px}
+.modal-title{font-size:1.15rem;font-weight:700;margin-bottom:16px;color:var(--gold);border-bottom:1px solid rgba(255,255,255,.1);padding-bottom:10px}
+.modal-subtitle{font-size:.9rem;font-weight:600;color:#ccc;margin-bottom:10px}
+.modal-box label{display:block;font-size:.8rem;color:var(--text-muted);margin:10px 0 4px}
+.modal-box input[type=text],.modal-box input[type=number],.modal-box select,.modal-box textarea{
+width:100%;background:rgba(255,255,255,.07);
+border:1px solid rgba(255,255,255,.15);border-radius:8px;
+padding:9px 12px;color:#fff;font-size:.92rem;
+font-family:'Poppins',sans-serif;outline:none;
+-webkit-transition:border-color .2s;transition:border-color .2s;
+}
+.modal-box input:focus,.modal-box select:focus,.modal-box textarea:focus{border-color:var(--orange)}
+.modal-box select option{background:#1a1a2e;color:#fff}
+.modal-actions{
+display:-webkit-box;display:-webkit-flex;display:flex;
+gap:8px;
+-webkit-box-pack:end;-webkit-justify-content:flex-end;justify-content:flex-end;
+margin-top:18px;
+-webkit-flex-wrap:wrap;flex-wrap:wrap;
+}
+
+.btn-save{background:var(--orange);color:#fff;border:none;padding:9px 20px;border-radius:8px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;-webkit-transition:background .2s;transition:background .2s}
+.btn-save:hover{background:var(--orange-dark)}
+.btn-cancel{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:9px 20px;border-radius:8px;font-weight:500;cursor:pointer;font-family:'Poppins',sans-serif}
+.btn-cancel:hover{background:rgba(255,255,255,.18)}
+.btn-secondary{background:rgba(255,255,255,.08);color:#ccc;border:1px solid rgba(255,255,255,.15);padding:9px 18px;border-radius:8px;cursor:pointer;font-family:'Poppins',sans-serif}
+
+/* ---- Tombol Posisi Popup (Template Layout) ---- */
+.popup-pos-btn{
+-webkit-box-flex:1;-webkit-flex:1;flex:1;
+background:rgba(255,255,255,.08);color:#ccc;
+border:1px solid rgba(255,255,255,.15);
+padding:9px 6px;border-radius:8px;cursor:pointer;
+font-family:'Poppins',sans-serif;font-size:.82rem;font-weight:600;
+-webkit-transition:background .2s,border-color .2s;transition:background .2s,border-color .2s;
+}
+.popup-pos-btn:hover{background:rgba(255,255,255,.16)}
+.popup-pos-btn.active-btn{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn-danger{background:#c0392b;color:#fff;border:none;padding:7px 14px;border-radius:7px;cursor:pointer;font-family:'Poppins',sans-serif;font-size:.82rem}
+.btn-mute{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:9px 16px;border-radius:8px;cursor:pointer;font-family:'Poppins',sans-serif}
+.btn-play{background:rgba(39,174,96,.25);border:1px solid rgba(39,174,96,.5);color:#2ecc71;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.78rem;font-family:'Poppins',sans-serif}
+.btn-stop{background:rgba(192,57,43,.25);border:1px solid rgba(192,57,43,.5);color:#e74c3c;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.78rem;font-family:'Poppins',sans-serif}
+
+.divider{border:none;border-top:1px solid rgba(255,255,255,.1);margin:14px 0}
+
+/* Audio items */
+.audio-item{
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+gap:8px;
+background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+border-radius:9px;padding:9px 12px;margin-bottom:7px;cursor:pointer;
+-webkit-transition:background .2s,border-color .2s;transition:background .2s,border-color .2s;
+}
+.audio-item:hover{background:rgba(255,255,255,.09)}
+.audio-item.active-audio{background:rgba(39,174,96,.15) !important;border-color:rgba(39,174,96,.5) !important}
+.audio-item-name{-webkit-box-flex:1;-webkit-flex:1;flex:1;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.audio-controls{display:-webkit-box;display:-webkit-flex;display:flex;gap:6px;-webkit-flex-shrink:0;flex-shrink:0}
+
+/* Event list */
+.event-item{
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+gap:10px;
+background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+border-radius:9px;padding:9px 12px;margin-bottom:7px;
+}
+.event-item-info{-webkit-box-flex:1;-webkit-flex:1;flex:1}
+.event-item-name{font-size:.9rem;font-weight:600}
+.event-item-date{font-size:.75rem;color:#aaa;margin-top:2px}
+.event-item-days{font-size:.75rem;color:var(--orange);font-weight:600}
+.event-edit-btn{background:rgba(255,255,255,.1);border:none;color:#ccc;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:.75rem}
+.event-edit-btn:hover{background:rgba(255,165,0,.3);color:#fff}
+
+/* Prayer modal */
+.prayer-adjust-row{
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+gap:10px;-webkit-flex-wrap:wrap;flex-wrap:wrap;margin:8px 0;
+}
+.prayer-adjust-row label{margin:0;-webkit-flex:0 0 auto;flex:0 0 auto;min-width:190px}
+.prayer-adjust-btn{
+background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+color:#fff;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:.82rem;
+font-family:'Poppins',sans-serif;-webkit-transition:background .15s;transition:background .15s;
+}
+.prayer-adjust-btn:hover,.prayer-adjust-btn.active-btn{background:var(--orange);border-color:var(--orange)}
+.time-offset-controls{display:-webkit-box;display:-webkit-flex;display:flex;gap:6px;-webkit-flex-wrap:wrap;flex-wrap:wrap;margin-top:8px}
+.offset-btn{
+background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+color:#fff;padding:8px 12px;border-radius:6px;cursor:pointer;
+font-size:.85rem;font-family:'Poppins',sans-serif;min-width:44px;text-align:center;
+}
+.offset-btn:hover{background:var(--orange)}
+.current-time-display{font-size:2rem;font-weight:800;color:var(--gold);text-align:center;margin:10px 0;font-family:'Roboto Condensed',sans-serif}
+
+/* ---- SETTINGS SIDEBAR ---- */
+#settings-overlay{
+position:fixed;
+top:0;right:0;bottom:0;left:0;
+background:rgba(0,0,0,.5);z-index:800;
+}
+#settings-sidebar{
+position:fixed;top:0;right:0;width:380px;max-width:98vw;height:100%;
+height:100vh;
+background:#0d0d1c;z-index:850;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-orient:vertical;-webkit-box-direction:normal;
+-webkit-flex-direction:column;flex-direction:column;
+border-left:1px solid rgba(255,255,255,.1);
+-webkit-animation:sideSlide .3s ease;animation:sideSlide .3s ease;
+overflow:hidden;
+}
+@-webkit-keyframes sideSlide{from{-webkit-transform:translateX(100%);transform:translateX(100%)}to{-webkit-transform:translateX(0);transform:translateX(0)}}
+@keyframes sideSlide{from{transform:translateX(100%)}to{transform:translateX(0)}}
+#settings-header{
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+-webkit-box-pack:justify;-webkit-justify-content:space-between;justify-content:space-between;
+padding:16px 20px;background:rgba(255,255,255,.04);
+border-bottom:1px solid rgba(255,255,255,.1);
+color:var(--gold);font-weight:700;font-size:.95rem;-webkit-flex-shrink:0;flex-shrink:0;
+}
+#settings-header button{background:rgba(255,255,255,.1);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:.9rem}
+#settings-body{-webkit-box-flex:1;-webkit-flex:1;flex:1;overflow-y:auto;padding:10px}
+#settings-body::-webkit-scrollbar{width:3px}
+#settings-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:2px}
+
+.settings-section{margin-bottom:6px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
+.settings-section-title{
+background:rgba(255,255,255,.05);padding:11px 14px;
+color:#fff;font-weight:600;font-size:.87rem;cursor:pointer;
+-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;
+-webkit-transition:background .2s;transition:background .2s;
+}
+.settings-section-title:hover{background:rgba(255,255,255,.1)}
+.settings-section-body{display:none;padding:12px 14px;background:rgba(0,0,0,.25);color:#fff}
+.settings-section-body.open{display:block}
+.settings-section-body label{display:block;font-size:.78rem;color:var(--text-muted);margin:8px 0 4px}
+.settings-section-body input[type=text],
+.settings-section-body input[type=number],
+.settings-section-body select,
+.settings-section-body textarea{
+width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);
+border-radius:7px;padding:7px 10px;color:#fff;font-size:.85rem;
+font-family:'Poppins',sans-serif;outline:none;margin-bottom:4px;
+}
+.settings-section-body input[type=range]{width:100%;}
+.settings-section-body input[type=file]{
+background:transparent;border:1px dashed rgba(255,255,255,.2);
+cursor:pointer;padding:7px;border-radius:7px;width:100%;
+}
+.settings-section-body select option{background:#1a1a2e}
+.toggle-label{
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+gap:10px;cursor:pointer;margin-bottom:10px;color:#fff;font-size:.85rem;
+}
+.toggle-label input[type=checkbox]{width:16px;height:16px;}
+
+/* Background preview */
+#bg-preview-list{
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-flex-wrap:wrap;flex-wrap:wrap;
+gap:7px;margin:8px 0;
+}
+.bg-preview-item{
+width:78px;height:52px;border-radius:6px;overflow:hidden;
+border:2px solid transparent;cursor:pointer;position:relative;
+-webkit-transition:border-color .2s;transition:border-color .2s;
+}
+.bg-preview-item.active-bg{border-color:var(--orange)}
+.bg-preview-item img{width:100%;height:100%;object-fit:cover}
+.bg-remove{
+position:absolute;top:2px;right:2px;
+background:rgba(192,57,43,.85);color:#fff;border:none;
+border-radius:3px;width:17px;height:17px;font-size:.6rem;
+cursor:pointer;display:none;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center;
+}
+.bg-preview-item:hover .bg-remove{display:-webkit-box;display:-webkit-flex;display:flex}
+
+/* Theme grid */
+#tema-grid{
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-flex-wrap:wrap;flex-wrap:wrap;
+gap:8px;margin-bottom:10px;
+}
+.tema-card{
+width:calc(50% - 4px);
+border-radius:10px;padding:10px;cursor:pointer;
+border:2px solid transparent;
+-webkit-transition:border-color .2s,-webkit-transform .15s;
+transition:border-color .2s,transform .15s;
+text-align:center;font-size:.78rem;font-weight:600;
+}
+.tema-card:hover{-webkit-transform:scale(1.03);transform:scale(1.03)}
+.tema-card.active-tema{border-color:#fff}
+
+/* Custom theme elements */
+.custom-theme-item{
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+gap:8px;margin-bottom:8px;-webkit-flex-wrap:wrap;flex-wrap:wrap;
+}
+.custom-theme-item label{margin:0;-webkit-flex:0 0 140px;flex:0 0 140px;font-size:.78rem}
+.color-swatches{display:-webkit-box;display:-webkit-flex;display:flex;gap:5px;-webkit-flex-wrap:wrap;flex-wrap:wrap}
+.color-swatch{
+width:22px;height:22px;border-radius:4px;cursor:pointer;
+border:2px solid transparent;
+-webkit-transition:border-color .15s,-webkit-transform .1s;
+transition:border-color .15s,transform .1s;
+-webkit-flex-shrink:0;flex-shrink:0;
+}
+.color-swatch:hover{-webkit-transform:scale(1.2);transform:scale(1.2);border-color:#fff}
+.color-swatch.selected{border-color:#fff;-webkit-transform:scale(1.15);transform:scale(1.15)}
+
+/* Modal scrollbar */
+.modal-box::-webkit-scrollbar{width:4px}
+.modal-box::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:2px}
+
+/* Kajian ribbon */
+#kajian-pemateri-ribbon{
+grid-area:ribbon;
+position:relative;
+z-index:12;
+width:100%;
+-webkit-transition:opacity .8s;transition:opacity .8s;
+display:none;
+}
+
+/* Live grid switch buttons */
+.lg-sw-btn{
+padding:8px;
+border-radius:8px;
+border:1px solid rgba(255,255,255,.2);
+background:rgba(255,255,255,.1);
+color:#fff;
+cursor:pointer;
+font-family:'Poppins',sans-serif;
+font-size:.82rem;
+}
+.lg-sw-btn.aktif{background:var(--orange);}
+
+/* Volume row */
+.volume-row{
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+gap:8px;
+}
+
+/* Donasi modal */
+#donasi-modal{
+-webkit-flex-direction:column;flex-direction:column;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+}
+/* ============================================================
+   MODE ADZAN — Foreground full-screen (fase: sebelum/adzan/iqamah/shalat)
+   ============================================================ */
+#adzan-mode-foreground{
+position:fixed;top:0;right:0;bottom:0;left:0;
+z-index:600;background:#000;display:none;overflow:hidden;
+}
+#amf-settings-btn{
+position:absolute;top:14px;right:14px;z-index:2;
+background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);
+width:38px;height:38px;border-radius:50%;font-size:1.2rem;cursor:pointer;
+}
+#amf-settings-btn:hover{background:rgba(255,255,255,.3)}
+.amf-bg{position:absolute;top:0;right:0;bottom:0;left:0;background-size:cover;background-position:center;z-index:0;}
+.amf-bg::after{content:'';position:absolute;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.15);}
+.amf-content{
+position:relative;z-index:1;width:100%;height:100%;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-orient:vertical;-webkit-box-direction:normal;
+-webkit-flex-direction:column;flex-direction:column;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center;
+padding:4vh 6vw;text-align:center;box-sizing:border-box;
+}
+.amf-countdown{
+font-size:8rem;font-weight:800;color:#111;
+font-family:'Roboto Condensed',sans-serif;margin-bottom:1vh;
+text-shadow:0 2px 8px rgba(255,255,255,.25);line-height:1;
+}
+.amf-countdown.amf-big{font-size:12rem;line-height:1;}
+.amf-icon{width:150px;height:150px;object-fit:contain;margin-bottom:1vh;}
+.amf-clock{
+display:inline-block;color:#fff;background:#000;
+padding:1.2vh 3vw;border-radius:60px;
+font-size:2.8rem;font-weight:700;
+font-family:'Roboto Condensed',sans-serif;margin-bottom:1vh;
+}
+.amf-status{font-size:2.5rem;font-weight:700;color:#000000;margin-bottom:1vh;}
+.amf-ayat{font-size:1.5rem;color:rgba(0, 0, 0, 0.92);max-width:65vw;line-height:1.7;margin-bottom:2vh;}
+.amf-source{font-size:1.5rem;color:white;font-weight:700;padding:4px 16px;border-radius:20px;background:rgba(245,166,35,.7);}
+
+/* ---- VIDEO SEBELUM ADZAN + MODE ADZAN bersamaan (video full-foreground) ---- */
+/* Kelas ini dipasang lewat JS saat kedua fitur aktif: menaikkan video di atas
+   #adzan-mode-foreground (z-index:600) sehingga video menutupi SEMUA tampilan. */
+#video-before-bg.vb-fg{ z-index:650; }
+
+#vb-settings-btn{
+display:none;
+position:fixed;top:14px;right:14px;z-index:651;
+background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);
+width:38px;height:38px;border-radius:50%;font-size:1.2rem;cursor:pointer;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center;
+}
+#vb-settings-btn:hover{background:rgba(255,255,255,.3)}
+
+#vb-event-banner{
+display:none;
+position:fixed;bottom:50%;right:24px;z-index:651;
+background:rgba(172, 42, 42, 0.8);;color:var(--banner-text);
+font-size:1.20rem;font-weight:700;
+padding:9px 18px;border-radius:30px;
+letter-spacing:.5px;white-space:nowrap;
+box-shadow:0 4px 15px rgba(192,57,43,.4);
+-webkit-animation:pulse-red 2.5s infinite;
+animation:pulse-red 2.5s infinite;
+}
+
+/* ============================================================
+   KAS MASJID & AYAT/HADITS — menggantikan bg-slide saja
+   ============================================================ */
+#kas-ayat-container{position:absolute;top:0;right:0;bottom:0;left:0;z-index:0;overflow:hidden;}
+.ka-bg{position:absolute;top:0;right:0;bottom:0;left:0;background-size:cover;background-position:center;z-index:0;}
+.ka-bg::after{content:'';position:absolute;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,0);}
+
+.ka-slide{
+position:absolute;top:0;right:0;bottom:0;left:0;z-index:1;opacity:0;
+display:-webkit-box;display:-webkit-flex;display:flex;
+-webkit-box-orient:vertical;-webkit-box-direction:normal;
+-webkit-flex-direction:column;flex-direction:column;
+-webkit-box-align:center;-webkit-align-items:center;align-items:center;
+-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center;
+padding:40px 60px;
+}
+.ka-slide.active{opacity:1;z-index:3;}
+.ka-slide.leaving{z-index:2;}
+
+#kas-ayat-container.t-fade .ka-slide{-webkit-transition:opacity 1.2s ease;transition:opacity 1.2s ease;}
+
+#kas-ayat-container.t-slide-left .ka-slide{-webkit-transition:-webkit-transform 1s ease,opacity .5s ease;transition:transform 1s ease,opacity .5s ease;-webkit-transform:translateX(100%);transform:translateX(100%);opacity:0;}
+#kas-ayat-container.t-slide-left .ka-slide.active{-webkit-transform:translateX(0);transform:translateX(0);opacity:1;}
+#kas-ayat-container.t-slide-left .ka-slide.leaving{-webkit-transform:translateX(-100%);transform:translateX(-100%);opacity:1;}
+
+#kas-ayat-container.t-slide-right .ka-slide{-webkit-transition:-webkit-transform 1s ease,opacity .5s ease;transition:transform 1s ease,opacity .5s ease;-webkit-transform:translateX(-100%);transform:translateX(-100%);opacity:0;}
+#kas-ayat-container.t-slide-right .ka-slide.active{-webkit-transform:translateX(0);transform:translateX(0);opacity:1;}
+#kas-ayat-container.t-slide-right .ka-slide.leaving{-webkit-transform:translateX(100%);transform:translateX(100%);opacity:1;}
+
+#kas-ayat-container.t-zoom .ka-slide{-webkit-transition:-webkit-transform 1.1s ease,opacity .8s ease;transition:transform 1.1s ease,opacity .8s ease;-webkit-transform:scale(1.15);transform:scale(1.15);opacity:0;}
+#kas-ayat-container.t-zoom .ka-slide.active{-webkit-transform:scale(1);transform:scale(1);opacity:1;}
+
+#kas-ayat-container.t-flip .ka-slide{-webkit-transition:opacity .9s ease;transition:opacity .9s ease;opacity:0;}
+#kas-ayat-container.t-flip .ka-slide.active{opacity:1;}
+
+/* Kas Masjid table */
+.km-wrap{width:100%;max-width:920px;background:rgba(8,8,24,0);border-radius:18px;padding:24px 30px;color:#fff;}
+.km-title{text-align:center;font-size:1.35rem;font-weight:700;color:var(--gold);margin-bottom:16px;}
+.km-cols{display:-webkit-box;display:-webkit-flex;display:flex;gap:22px;}
+.km-col{-webkit-box-flex:1;-webkit-flex:1;flex:1;min-width:0;}
+.km-col-head{font-weight:700;font-size:1rem;text-align:center;padding:7px;border-radius:8px;margin-bottom:10px;}
+.km-col-head.masuk{background:rgba(39,174,96,.22);color:#2ecc71;}
+.km-col-head.keluar{background:rgba(192,57,43,.22);color:#e74c3c;}
+.km-list{height:260px;overflow:hidden;position:relative;}
+.km-track{-webkit-transition:-webkit-transform .7s ease;transition:transform .7s ease;}
+.km-row{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-pack:justify;-webkit-justify-content:space-between;justify-content:space-between;-webkit-box-align:center;-webkit-align-items:center;align-items:center;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.08);font-size:.85rem;}
+.km-row .km-jenis{font-weight:600;color: #0d0d1c;}
+.km-row .km-tanggal{font-size:.68rem;color: #59595a;;margin-top:2px;}
+.km-row .km-harga.masuk{color:#2ecc71;font-weight:700;}
+.km-row .km-harga.keluar{color:#e74c3c;font-weight:700;}
+.km-empty{text-align:center;color:var(--text-muted);font-size:.8rem;padding:20px 0;}
+.km-total{margin-top:16px;border-top:2px solid rgba(255,255,255,.15);background:rgba(0, 0, 0, 0.8);padding:8px;border-radius:8px;text-align:center;font-size:1.15rem;font-weight:700;color:white;}
+
+/* Ayat/Hadits slide (Kas Masjid mode) */
+.ka-ayat-inner{max-width:840px;text-align:center;background:rgba(8,8,24,0);border-radius:18px;padding:34px 40px;}
+.ka-ayat-badge{display:inline-block;padding:4px 16px;border-radius:20px;background:rgba(245,166,35,.3);color:var(--orange);font-size:.85rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
+.ka-ayat-text{font-size:1.9rem;line-height:1.5;color:#111111;font-weight:500;}
+.ka-ayat-source{margin-top:5px;font-size:1.35rem;color:var(--gold);font-weight:700;}
+
+/* ➕ TAMBAHAN: Donasi slide (Kas Masjid & Ayat/Hadits mode) — QR kiri, Judul+Deskripsi kanan */
+.ka-donasi-wrap{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:44px;max-width:900px;background:rgba(8,8,24,0.5);border-radius:18px;padding:30px 40px;}
+.ka-donasi-qr-col{-webkit-box-flex:0;-webkit-flex:0 0 auto;flex:0 0 auto;}
+.ka-donasi-qr-col img{width:260px;height:260px;border-radius:12px;object-fit:contain;background:#fff;padding:8px;display:block;}
+.ka-donasi-info-col{-webkit-box-flex:1;-webkit-flex:1;flex:1;min-width:0;text-align:left;}
+.ka-donasi-judul{font-size:1.9rem;font-weight:700;color:var(--gold);margin-bottom:14px;}
+.ka-donasi-desc{font-size:1.15rem;line-height:1.6;color:#fff;white-space:pre-line;}
